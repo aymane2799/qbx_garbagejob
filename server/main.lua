@@ -67,11 +67,22 @@ lib.callback.register('garbagejob:server:newShift', function(source)
         return false
     end
 
-    local maxStops = math.random(config.minStops, #sharedConfig.locations.trashcan)
+    -- Atlas fork: a route has between minStops and maxStops stops, and its locations are drawn without
+    -- repetition (upstream: up to as many stops as there are locations, each drawn independently).
+    local locationCount = #sharedConfig.locations.trashcan
+    local stopCount = math.random(config.minStops, math.max(config.minStops, config.maxStops or locationCount))
+    local order = {}
+    for i = 1, locationCount do
+        order[i] = i
+    end
     local allStops = {}
-    for _ = 1, maxStops do
-        allStops[#allStops + 1] = {
-            stop = math.random(#sharedConfig.locations.trashcan),
+    for i = 1, stopCount do
+        -- a route longer than the list starts a new draw
+        local slot = (i - 1) % locationCount + 1
+        local pick = math.random(slot, locationCount)
+        order[slot], order[pick] = order[pick], order[slot]
+        allStops[i] = {
+            stop = order[slot],
             bags = math.random(config.minBagsPerStop, config.maxBagsPerStop),
         }
     end
